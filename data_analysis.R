@@ -337,4 +337,29 @@ all_data %>%
         axis.text.x = element_blank())
 dev.off()  
 
-  
+#data annotation
+
+peak <- data.frame()
+ion_list <- distinct(all_data, medMz, .keep_all = T)
+
+for (i in 1:nrow(ion_list)){
+  print(paste0('Working on ion: ', ion_list$medMz[i], ', in Polarity: ', ion_list$Polarity[i]))
+  ann <- data_annotate(MZ = ion_list$medMz[i],
+                       adduct = ifelse(ion_list$Polarity[i]=='-', 'neg','pos'),
+                       ppm = 5)
+  peak <- bind_rows(peak, ann)
+}
+write.csv(peak, 'List of putatively annotated ions.csv')
+
+all_peaks <- all_data %>% 
+  select(groupId, medMz, medRt, maxQuality, Polarity, Sample, Area) %>% 
+  unite(Ion, c(Polarity, medMz, medRt), sep='_') %>% 
+  spread(Sample, Area) %>%
+  left_join(., all_CCP, by='Ion') %>% 
+  separate(Ion, c('Polarity', 'medMz','medRt'), sep='_') %>% 
+  mutate(medMz = as.numeric(medMz)) %>% 
+  left_join(., peak, by = 'medMz') %>% 
+  select(medMz, medRt, Polarity, Corr, comp.1, comp.2, maxQuality, 
+         mz, ID, Name, Formula, Adduct, Dppm, MonoisotopicMass, AS.001:AS.096)
+
+write.csv(all_peaks, 'All peaks.csv')
